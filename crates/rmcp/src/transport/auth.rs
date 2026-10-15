@@ -4321,8 +4321,11 @@ mod tests {
     #[tokio::test]
     async fn default_http_client_preserves_connection_failure_cause() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
-        let url = format!("http://{}/mcp", listener.local_addr().unwrap());
+        let addr = listener.local_addr().unwrap();
+        let url = format!("http://{addr}/mcp");
         drop(listener);
+        // The OS words a refused connection differently on each platform.
+        let refused = std::net::TcpStream::connect(addr).unwrap_err().to_string();
 
         let manager = AuthorizationManager::new(&url).await.unwrap();
         let error = manager.resolve_metadata().await.unwrap_err();
@@ -4334,7 +4337,7 @@ mod tests {
                     if reason.contains(&url)
                         && reason.contains("\n  Caused by: error sending request for url")
                         && reason.matches("error sending request for url").count() == 1
-                        && reason.to_ascii_lowercase().contains("connection refused")
+                        && reason.contains(&refused)
             ),
             "unexpected discovery error: {error}"
         );

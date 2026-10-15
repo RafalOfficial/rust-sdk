@@ -23,7 +23,9 @@ static JS_DEPENDENCIES_INSTALLED: tokio::sync::OnceCell<()> = tokio::sync::OnceC
 async fn install_js_dependencies() -> anyhow::Result<()> {
     JS_DEPENDENCIES_INSTALLED
         .get_or_try_init(|| async {
-            let status = tokio::process::Command::new("npm")
+            // npm is a `npm.cmd` shim on Windows, which `Command` does not resolve from a bare name.
+            let npm = if cfg!(windows) { "npm.cmd" } else { "npm" };
+            let status = tokio::process::Command::new(npm)
                 .arg("install")
                 .current_dir("tests/test_with_js")
                 .status()
